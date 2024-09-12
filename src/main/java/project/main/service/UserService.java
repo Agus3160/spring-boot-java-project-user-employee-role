@@ -71,14 +71,17 @@ public class UserService implements IBaseService<UserDto, User> {
     public UserDto updateById(int id, UserDto userDto) {
         Optional<User> u = userRepo.findById(id);
         if (u.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Usuario no encontrado");
-        Optional<Role> r = roleRepo.findById(u.get().getId());
-        if (r.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "El rol seleccionado para el usuario, no existe");
+
         User userEntity = u.get();
 
         if (userDto.getEmail() != null) userEntity.setEmail(userDto.getEmail());
         if (userDto.getUsername() != null) userEntity.setUsername(userDto.getUsername());
+        if (userDto.getRol_id() != 0) {
+            Optional<Role> r = roleRepo.findById(userDto.getId());
+            if(r.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Rol no encontrado");
+            userEntity.setRole(r.get());
+        }
 
-        userEntity.setRole(r.get());
         userRepo.save(userEntity);
         return entityToDto(userEntity);
     }

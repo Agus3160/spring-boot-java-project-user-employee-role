@@ -1,5 +1,7 @@
 package project.main.exception;
 
+import org.springframework.ui.Model;
+import org.springframework.web.servlet.ModelAndView;
 import project.main.utils.response.FailedResponseDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,14 +35,16 @@ public class GlobalApiExceptionHandler {
 
     // Handle 404 errors (NoHandlerFoundException)
     @ExceptionHandler(value = NoResourceFoundException.class)
-    public ResponseEntity<FailedResponseDto> handleNotFound(NoResourceFoundException ex) {
-        FailedResponseDto errorResponse = new FailedResponseDto(
-                HttpStatus.NOT_FOUND.value(),
-                "Resource not found",
-                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                ,null
-        );
-        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    public ModelAndView handleNotFound(NoResourceFoundException ex) {
+
+//        FailedResponseDto errorResponse = new FailedResponseDto(
+//                HttpStatus.NOT_FOUND.value(),
+//                "Resource not found",
+//                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+//                ,null
+//        );
+//        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+        return new ModelAndView("error/404");
     }
 
     // No valid arguments exceptions

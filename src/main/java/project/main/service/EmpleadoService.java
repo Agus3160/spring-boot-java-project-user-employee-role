@@ -77,18 +77,20 @@ public class EmpleadoService implements IBaseService<EmpleadoDto, Empleado> {
 
         if(empleadoOptional.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Empleado no encontrado");
 
-        //Obtener el usuario y el puesto de los id del empleado
-        Optional<User> user = userRepo.findById(empleadoDto.getUser_id());
-        Optional<Puesto> puesto = puestoRepo.findById(empleadoDto.getPuesto_id());
-
-        //Verificar su existencia en la db
-        if(user.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "No se ha encontrado el usuario");
-        if(puesto.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "No se ha encontrado el puesto");
-
-        //Asignar los valores que cumplen con el criterio a los campos correspondientes
         Empleado empleadoEntity = empleadoOptional.get();
-        empleadoEntity.setUser(user.get());
-        empleadoEntity.setPuesto(puesto.get());
+
+        if(empleadoDto.getPuesto_id() != 0) {
+            Optional<Puesto> puesto = puestoRepo.findById(empleadoDto.getPuesto_id());
+            if(puesto.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "No se ha encontrado el puesto");
+            empleadoEntity.setPuesto(puesto.get());
+        }
+
+        if(empleadoDto.getUser_id() != 0) {
+            Optional<User> user = userRepo.findById(empleadoDto.getUser_id());
+            if(user.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "No se ha encontrado el usuario");
+            empleadoEntity.setUser(user.get());
+        }
+
         if(empleadoDto.getCi() != null) empleadoEntity.setCi(empleadoDto.getCi());
         if(empleadoDto.getNombre() != null) empleadoEntity.setNombre(empleadoDto.getNombre());
 
