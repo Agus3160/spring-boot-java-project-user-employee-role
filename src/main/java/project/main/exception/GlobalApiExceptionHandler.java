@@ -1,5 +1,7 @@
 package project.main.exception;
 
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.ui.Model;
 import org.springframework.web.servlet.ModelAndView;
 import project.main.utils.response.FailedResponseDto;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -19,6 +22,27 @@ import java.util.Map;
 
 @ControllerAdvice
 public class GlobalApiExceptionHandler {
+
+    private String extractDetailMessage(Throwable ex) {
+        Throwable cause = ex.getCause();
+
+        // Si la causa es una excepción de Hibernate, que envuelve una SQLException
+        if (cause instanceof ConstraintViolationException constraintViolationException) {
+            String constraintName = constraintViolationException.getConstraintName();
+            return "Constraint violation: " + constraintName + " - " + constraintViolationException.getMessage();
+        }
+
+        // Si la causa es directamente una SQLException (caso de DataIntegrityViolationException)
+        if (cause instanceof SQLException) {
+            SQLException sqlException = (SQLException) cause;
+            return "SQL Error: " + sqlException.getMessage() +
+                    " (Error Code: " + sqlException.getErrorCode() +
+                    ", SQL State: " + sqlException.getSQLState() + ")";
+        }
+
+        // Para cualquier otro caso, retornar el mensaje básico
+        return ex.getMessage();
+    }
 
     @ExceptionHandler(value = ApiException.class)
     public ResponseEntity<FailedResponseDto> handleGenericErrors(ApiException ex) {
@@ -35,16 +59,16 @@ public class GlobalApiExceptionHandler {
 
     // Handle 404 errors (NoHandlerFoundException)
     @ExceptionHandler(value = NoResourceFoundException.class)
-    public ModelAndView handleNotFound(NoResourceFoundException ex) {
+    public ResponseEntity<FailedResponseDto> handleNotFound(NoResourceFoundException ex) {
 
-//        FailedResponseDto errorResponse = new FailedResponseDto(
-//                HttpStatus.NOT_FOUND.value(),
-//                "Resource not found",
-//                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-//                ,null
-//        );
-//        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
-        return new ModelAndView("error/404");
+        FailedResponseDto errorResponse = new FailedResponseDto(
+                HttpStatus.NOT_FOUND.value(),
+                "Resource not found",
+                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                ,null
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+
     }
 
     // No valid arguments exceptions
@@ -68,6 +92,32 @@ public class GlobalApiExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<FailedResponseDto> handleTypeMismatchExceptions(MethodArgumentTypeMismatchException ex) {
         String errorMessage = "Type mismatch: " + ex.getName() + " should be of type " + ex.getRequiredType().getSimpleName();
+        FailedResponseDto errorResponse = new FailedResponseDto(
+                HttpStatus.BAD_REQUEST.value(),
+                errorMessage,
+                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                null
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<FailedResponseDto> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        String errorMessage = "Database constraint violation: " + extractDetailMessage(ex);
+        FailedResponseDto errorResponse = new FailedResponseDto(
+                HttpStatus.CONFLICT.value(),
+                errorMessage,
+                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                null
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+
+
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<FailedResponseDto> handleConstraintViolation(ConstraintViolationException ex) {
+        String errorMessage = "Constraint violation: " + extractDetailMessage(ex);
         FailedResponseDto errorResponse = new FailedResponseDto(
                 HttpStatus.BAD_REQUEST.value(),
                 errorMessage,

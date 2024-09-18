@@ -1,8 +1,12 @@
 package project.main.service;
 
 import jakarta.transaction.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import project.main.exception.ApiException;
 import project.main.repo.RoleRepo;
@@ -18,6 +22,7 @@ import project.main.specifications.RoleSpecification;
 import project.main.specifications.base.DeleteFilterOption;
 import project.main.utils.response.SuccessResponseDto;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -31,6 +36,9 @@ public class RoleService implements IBaseService<RoleDto, Role> {
     @Autowired
     RoleRepo roleRepo;
 
+    @Autowired
+    CacheRedisService<RoleDto> cacheRedisService;
+
     public Page<RoleDto> getAllFilter(String rol, DeleteFilterOption deleteFilterOption, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
 
@@ -39,7 +47,11 @@ public class RoleService implements IBaseService<RoleDto, Role> {
                 .and(RoleSpecification.applyDeleteFilter(deleteFilterOption));
 
         Page<Role> rolePage = roleRepo.findAll(specification, pageable);
-        return rolePage.map(role -> modelMapper.map(role, RoleDto.class));
+        return rolePage.map(role -> {
+            RoleDto roleDto = entityToDto(role);
+            cacheRedisService.setWithTTL("role", ""+role.getId(), roleDto, Duration.ZERO);
+            return roleDto;
+        });
     }
 
     @Override
@@ -53,6 +65,7 @@ public class RoleService implements IBaseService<RoleDto, Role> {
     }
 
     @Override
+    @CachePut(value = "role", key = "#result.id")
     public RoleDto create(RoleDto roleDto) {
         Role role = dtoToEntity(roleDto);
         roleRepo.save(role);
@@ -60,6 +73,7 @@ public class RoleService implements IBaseService<RoleDto, Role> {
     }
 
     @Override
+    @CacheEvict(value = "role", key = "#id")
     public RoleDto softDeleteById(int id) {
         Optional<Role> r = roleRepo.findById(id);
         if(r.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Rol no encontrado");
@@ -70,6 +84,7 @@ public class RoleService implements IBaseService<RoleDto, Role> {
     }
 
     @Override
+    @CacheEvict(value = "role", key = "#id")
     public RoleDto updateById(int id, RoleDto roleDto) {
         Optional<Role> role = roleRepo.findById(id);
         if (role.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Rol no encontrado");
@@ -80,6 +95,7 @@ public class RoleService implements IBaseService<RoleDto, Role> {
     }
 
     @Override
+    @Cacheable(value = "role", key = "#id")
     public RoleDto getById(int id) {
         Optional<Role> role = roleRepo.findById(id);
         if(role.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Rol no encontrado");
@@ -87,11 +103,14 @@ public class RoleService implements IBaseService<RoleDto, Role> {
     }
 
     @Override
+    @CacheEvict(value = "role", key = "#id")
     public SuccessResponseDto deleteById(int id) {
         roleRepo.deleteById(id);
         return new SuccessResponseDto(200, "Registro Eliminado correctamente", null);
     }
 
+
+    //NOT USED
     @Override
     public Page<RoleDto> getAll(int page, int size) {
         PageRequest pageRequest = PageRequest.of(page, size);

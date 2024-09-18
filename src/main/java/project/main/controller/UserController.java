@@ -1,5 +1,6 @@
 package project.main.controller;
 
+import org.springframework.beans.factory.annotation.Value;
 import project.main.service.UserService;
 import com.fiuni.distri.project.fiuni.dto.UserDto;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +36,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public UserDto updateById(@PathVariable(name = "id") int id, UserDto userDto) {
+    public UserDto updateById(@PathVariable(name = "id") int id, @RequestBody UserDto userDto) {
         return this.userService.updateById(id, userDto);
     }
 

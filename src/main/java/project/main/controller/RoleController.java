@@ -2,6 +2,7 @@ package project.main.controller;
 
 import com.fiuni.distri.project.fiuni.dto.RoleDto;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import project.main.service.RoleService;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +40,6 @@ public class RoleController {
     public RoleDto updateById(@PathVariable(name = "id") int id, @RequestBody RoleDto rDto) {
         return this.roleService.updateById(id, rDto);
     }
-
     @DeleteMapping("/soft/{id}")
     public RoleDto softDeleteById(@PathVariable(name = "id") int id) {
         return this.roleService.softDeleteById(id);

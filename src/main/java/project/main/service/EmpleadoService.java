@@ -7,6 +7,9 @@ import com.fiuni.distri.project.fiuni.dto.EmpleadoDto;
 import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -40,6 +43,9 @@ public class EmpleadoService implements IBaseService<EmpleadoDto, Empleado> {
     @Autowired
     PuestoRepo puestoRepo;
 
+    @Autowired
+    CacheRedisService<EmpleadoDto> cacheRedisService;
+
     @Override
     public Empleado dtoToEntity(EmpleadoDto empleadoDto) {
         return modelMapper.map(empleadoDto, Empleado.class);
@@ -52,6 +58,7 @@ public class EmpleadoService implements IBaseService<EmpleadoDto, Empleado> {
 
 
     @Override
+    @CachePut(value = "empleado", key = "#result.id")
     public EmpleadoDto create(EmpleadoDto empleadoDto) {
         Empleado empleadoEntity = dtoToEntity(empleadoDto);
 
@@ -72,6 +79,7 @@ public class EmpleadoService implements IBaseService<EmpleadoDto, Empleado> {
     }
 
     @Override
+    @CacheEvict(value = "empleado", key = "#id")
     public EmpleadoDto updateById(int id, EmpleadoDto empleadoDto) {
         Optional<Empleado> empleadoOptional = empleadoRepo.findById(id);
 
@@ -99,6 +107,7 @@ public class EmpleadoService implements IBaseService<EmpleadoDto, Empleado> {
     }
 
     @Override
+    @Cacheable(value = "empleado", key = "#id")
     public EmpleadoDto getById(int id) {
         Optional<Empleado> empleadoEntity = empleadoRepo.findById(id);
         if(empleadoEntity.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Empleado no encontrado");
@@ -106,12 +115,14 @@ public class EmpleadoService implements IBaseService<EmpleadoDto, Empleado> {
     }
 
     @Override
+    @CachePut(value = "empleado", key = "#result.id")
     public SuccessResponseDto deleteById(int id) {
         empleadoRepo.deleteById(id);
         return new SuccessResponseDto(200, "Registro Eliminado correctamente", null);
     }
 
     @Override
+    @CachePut(value = "empleado", key = "#result.id")
     public EmpleadoDto softDeleteById(int id) {
         Optional<Empleado> empleadoOptional = empleadoRepo.findById(id);
         if(empleadoOptional.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Empleado no encontrado");
@@ -119,13 +130,6 @@ public class EmpleadoService implements IBaseService<EmpleadoDto, Empleado> {
         empleadoEntity.setDeletedAt(LocalDateTime.now());
         empleadoRepo.save(empleadoEntity);
         return entityToDto(empleadoEntity);
-    }
-
-    @Override
-    public Page<EmpleadoDto> getAll(int page, int size) {
-        PageRequest pageRequest = PageRequest.of(page, size);
-        Page<Empleado> empleadoPage = empleadoRepo.findAll(pageRequest);
-        return empleadoPage.map(empleado -> entityToDto(empleado));
     }
 
     public Page<EmpleadoDto> getAllFilter(Integer userId, Integer puestoId, String nombre, String ci, int page, int size ){
@@ -138,6 +142,17 @@ public class EmpleadoService implements IBaseService<EmpleadoDto, Empleado> {
                 .and(EmpleadoSpecification.hasCi(ci));
 
         Page<Empleado> empleadoPage = empleadoRepo.findAll(specification, pageable);
+        return empleadoPage.map(empleado -> {
+            EmpleadoDto empleadoDto = entityToDto(empleado);
+            cacheRedisService.setWithDefaultTTL("empleado", ""+empleadoDto.getId(), empleadoDto);
+            return empleadoDto;
+        });
+    }
+
+    @Override
+    public Page<EmpleadoDto> getAll(int page, int size) {
+        PageRequest pageRequest = PageRequest.of(page, size);
+        Page<Empleado> empleadoPage = empleadoRepo.findAll(pageRequest);
         return empleadoPage.map(empleado -> entityToDto(empleado));
     }
 
