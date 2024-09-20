@@ -6,7 +6,6 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import project.main.exception.ApiException;
 import project.main.repo.RoleRepo;
@@ -49,7 +48,7 @@ public class RoleService implements IBaseService<RoleDto, Role> {
         Page<Role> rolePage = roleRepo.findAll(specification, pageable);
         return rolePage.map(role -> {
             RoleDto roleDto = entityToDto(role);
-            cacheRedisService.setWithTTL("role", ""+role.getId(), roleDto, Duration.ZERO);
+            cacheRedisService.setWithNoLimitTTL("role", ""+role.getId(), roleDto);
             return roleDto;
         });
     }

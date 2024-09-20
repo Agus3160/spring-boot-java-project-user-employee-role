@@ -19,6 +19,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @ControllerAdvice
 public class GlobalApiExceptionHandler {
@@ -26,23 +28,47 @@ public class GlobalApiExceptionHandler {
     private String extractDetailMessage(Throwable ex) {
         Throwable cause = ex.getCause();
 
-        // Si la causa es una excepción de Hibernate, que envuelve una SQLException
-        if (cause instanceof ConstraintViolationException constraintViolationException) {
-            String constraintName = constraintViolationException.getConstraintName();
-            return "Constraint violation: " + constraintName + " - " + constraintViolationException.getMessage();
+        // Si la causa es una SQLException con violación de llave foránea
+        if (cause instanceof SQLException sqlException) {
+            // Verificar el código SQLState para violaciones de llave foránea (23503)
+            if ("23503".equals(sqlException.getSQLState())) {
+                String detailedMessage = sqlException.getMessage();
+
+                // Procesar el mensaje para extraer nombres de tablas involucradas
+                String foreignTable = extractForeignTable(detailedMessage);
+                String primaryTable = extractPrimaryTable(detailedMessage);
+
+                return String.format(
+                        "No se puede eliminar la entidad de la tabla '%s' porque está referenciada por la tabla '%s'.",
+                        primaryTable, foreignTable
+                );
+            }
+            return "Error de base de datos: " + sqlException.getMessage();
         }
 
-        // Si la causa es directamente una SQLException (caso de DataIntegrityViolationException)
-        if (cause instanceof SQLException) {
-            SQLException sqlException = (SQLException) cause;
-            return "SQL Error: " + sqlException.getMessage() +
-                    " (Error Code: " + sqlException.getErrorCode() +
-                    ", SQL State: " + sqlException.getSQLState() + ")";
-        }
-
-        // Para cualquier otro caso, retornar el mensaje básico
-        return ex.getMessage();
+        return "Ha ocurrido un error inesperado.";
     }
+
+    private String extractForeignTable(String detailedMessage) {
+        // Extraer la tabla foránea del mensaje detallado (puedes ajustar la lógica según el formato del mensaje)
+        Pattern pattern = Pattern.compile("«(.+?)»");
+        Matcher matcher = pattern.matcher(detailedMessage);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return "otra entidad";
+    }
+
+    private String extractPrimaryTable(String detailedMessage) {
+        // Extraer la tabla primaria del mensaje detallado
+        Pattern pattern = Pattern.compile("table «(.+?)»");
+        Matcher matcher = pattern.matcher(detailedMessage);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return "otra entidad";
+    }
+
 
     @ExceptionHandler(value = ApiException.class)
     public ResponseEntity<FailedResponseDto> handleGenericErrors(ApiException ex) {

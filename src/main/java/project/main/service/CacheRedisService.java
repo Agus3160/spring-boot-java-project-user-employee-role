@@ -28,6 +28,9 @@ public class CacheRedisService<T> {
         redisTemplate.opsForValue().set(parseValueKey(value, key), object, duration);
     }
 
+    public void setWithNoLimitTTL(String value, String key, T object){
+        redisTemplate.opsForValue().set(parseValueKey(value, key), object);
+    }
 
     public void setWithDefaultTTL(String value, String key, T object){
         redisTemplate.opsForValue().set(parseValueKey(value, key), object, Duration.ofHours(defaultTTL));

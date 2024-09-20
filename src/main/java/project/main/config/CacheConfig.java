@@ -48,21 +48,8 @@ public class CacheConfig {
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
-
-        //Se inicializa una variable de configuracion de Redis con la configuracion por default
-        RedisCacheConfiguration defaultCacheConfig = RedisCacheConfiguration.defaultCacheConfig();
-
-        //Se crea un has map para manejar que configuracion sera aplicada para cada key
-        HashMap<String, RedisCacheConfiguration> redisCacheConfigurationHashMap = new HashMap<>();
-
-        //Se setean los ttls para los modelos en especifico
-        redisCacheConfigurationHashMap.put("role", defaultCacheConfig.entryTtl(Duration.ZERO));
-        redisCacheConfigurationHashMap.put("user", defaultCacheConfig.entryTtl(Duration.ofHours(this.defaultTTL)));
-        redisCacheConfigurationHashMap.put("empleado", defaultCacheConfig.entryTtl(Duration.ofHours(this.defaultTTL)));
-
         template.setKeySerializer(new StringRedisSerializer());
         template.setConnectionFactory(redisConnectionFactory);
-
         return template;
     }
 }

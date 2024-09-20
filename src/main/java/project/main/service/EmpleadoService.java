@@ -67,8 +67,8 @@ public class EmpleadoService implements IBaseService<EmpleadoDto, Empleado> {
         Optional<Puesto> puesto = puestoRepo.findById(empleadoDto.getPuesto_id());
 
         //Verificar su existencia en la db
-        if(user.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "No se ha encontrado el usuario");
-        if(puesto.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "No se ha encontrado el puesto");
+        if (user.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "No se ha encontrado el usuario");
+        if (puesto.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "No se ha encontrado el puesto");
 
         //Asignar el puesto y usuario al empleado
         empleadoEntity.setUser(user.get());
@@ -83,24 +83,24 @@ public class EmpleadoService implements IBaseService<EmpleadoDto, Empleado> {
     public EmpleadoDto updateById(int id, EmpleadoDto empleadoDto) {
         Optional<Empleado> empleadoOptional = empleadoRepo.findById(id);
 
-        if(empleadoOptional.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Empleado no encontrado");
+        if (empleadoOptional.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Empleado no encontrado");
 
         Empleado empleadoEntity = empleadoOptional.get();
 
-        if(empleadoDto.getPuesto_id() != 0) {
+        if (empleadoDto.getPuesto_id() != 0) {
             Optional<Puesto> puesto = puestoRepo.findById(empleadoDto.getPuesto_id());
-            if(puesto.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "No se ha encontrado el puesto");
+            if (puesto.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "No se ha encontrado el puesto");
             empleadoEntity.setPuesto(puesto.get());
         }
 
-        if(empleadoDto.getUser_id() != 0) {
+        if (empleadoDto.getUser_id() != 0) {
             Optional<User> user = userRepo.findById(empleadoDto.getUser_id());
-            if(user.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "No se ha encontrado el usuario");
+            if (user.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "No se ha encontrado el usuario");
             empleadoEntity.setUser(user.get());
         }
 
-        if(empleadoDto.getCi() != null) empleadoEntity.setCi(empleadoDto.getCi());
-        if(empleadoDto.getNombre() != null) empleadoEntity.setNombre(empleadoDto.getNombre());
+        if (empleadoDto.getCi() != null) empleadoEntity.setCi(empleadoDto.getCi());
+        if (empleadoDto.getNombre() != null) empleadoEntity.setNombre(empleadoDto.getNombre());
 
         empleadoRepo.save(empleadoEntity);
         return entityToDto(empleadoEntity);
@@ -110,29 +110,31 @@ public class EmpleadoService implements IBaseService<EmpleadoDto, Empleado> {
     @Cacheable(value = "empleado", key = "#id")
     public EmpleadoDto getById(int id) {
         Optional<Empleado> empleadoEntity = empleadoRepo.findById(id);
-        if(empleadoEntity.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Empleado no encontrado");
+        if (empleadoEntity.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Empleado no encontrado");
         return entityToDto(empleadoEntity.get());
     }
 
     @Override
-    @CachePut(value = "empleado", key = "#result.id")
+    @CacheEvict(value = "empleado", key = "#id")
     public SuccessResponseDto deleteById(int id) {
         empleadoRepo.deleteById(id);
         return new SuccessResponseDto(200, "Registro Eliminado correctamente", null);
     }
 
     @Override
-    @CachePut(value = "empleado", key = "#result.id")
+    @CacheEvict(value = "empleado", key = "#result.id")
     public EmpleadoDto softDeleteById(int id) {
         Optional<Empleado> empleadoOptional = empleadoRepo.findById(id);
-        if(empleadoOptional.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Empleado no encontrado");
+        if (empleadoOptional.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "Empleado no encontrado");
         Empleado empleadoEntity = empleadoOptional.get();
         empleadoEntity.setDeletedAt(LocalDateTime.now());
         empleadoRepo.save(empleadoEntity);
+        EmpleadoDto empleadoDto = entityToDto(empleadoEntity);
+        cacheRedisService.removeFromCache("user",""+empleadoDto.getUser_id());
         return entityToDto(empleadoEntity);
     }
 
-    public Page<EmpleadoDto> getAllFilter(Integer userId, Integer puestoId, String nombre, String ci, int page, int size ){
+    public Page<EmpleadoDto> getAllFilter(Integer userId, Integer puestoId, String nombre, String ci, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
 
         Specification<Empleado> specification = Specification
@@ -144,11 +146,12 @@ public class EmpleadoService implements IBaseService<EmpleadoDto, Empleado> {
         Page<Empleado> empleadoPage = empleadoRepo.findAll(specification, pageable);
         return empleadoPage.map(empleado -> {
             EmpleadoDto empleadoDto = entityToDto(empleado);
-            cacheRedisService.setWithDefaultTTL("empleado", ""+empleadoDto.getId(), empleadoDto);
+            cacheRedisService.setWithDefaultTTL("empleado", "" + empleadoDto.getId(), empleadoDto);
             return empleadoDto;
         });
     }
 
+    //NOT USED
     @Override
     public Page<EmpleadoDto> getAll(int page, int size) {
         PageRequest pageRequest = PageRequest.of(page, size);
