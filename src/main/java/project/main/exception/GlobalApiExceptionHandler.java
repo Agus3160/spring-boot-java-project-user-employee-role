@@ -2,8 +2,6 @@ package project.main.exception;
 
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.ui.Model;
-import org.springframework.web.servlet.ModelAndView;
 import project.main.utils.response.FailedResponseDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

@@ -2,6 +2,7 @@ package project.main.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.support.NoOpCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +16,7 @@ import java.time.Duration;
 import java.util.HashMap;
 
 @Configuration
+@EnableCaching
 public class CacheConfig {
 
     @Value("${app.cache.ttl:8}")
@@ -22,6 +24,7 @@ public class CacheConfig {
 
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory) {
+        if(redisConnectionFactory == null) return new NoOpCacheManager();
         try {
 
             //Se inicializa una variable de configuracion de Redis con la configuracion por default

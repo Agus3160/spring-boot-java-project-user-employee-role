@@ -2,7 +2,6 @@ package project.main.controller;
 
 import com.fiuni.distri.project.fiuni.dto.EmpleadoDto;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 import project.main.service.EmpleadoService;
